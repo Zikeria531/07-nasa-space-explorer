@@ -6,7 +6,8 @@ const gallery = document.getElementById('gallery');
 const statusMessage = document.getElementById('status');
 
 // NASA provides DEMO_KEY for trying the API without signing up.
-// Replace it with your own key from https://api.nasa.gov/ for regular use.
+// However, DEMO_KEY sometimes returns NASA's sample logo instead of real APOD photos.
+// For live data, replace it with your own API key from https://api.nasa.gov/ .
 const apiKey = 'DEMO_KEY';
 
 // Call the setupDateInputs function from dateRange.js
@@ -28,12 +29,15 @@ async function getSpaceImages() {
 	}
 
 	// URLSearchParams safely formats the dates and API key for the request URL.
-	const query = new URLSearchParams({
-		start_date: startDate,
-		end_date: endDate,
-		api_key: apiKey
-	});
-	const apiUrl = `https://api.nasa.gov/planetary/apod?${query}`;
+	const formattedStart = startDate.slice(2).replaceAll('-', '');
+  const formattedEnd = endDate.slice(2).replaceAll('-', '');
+
+  const query = new URLSearchParams({
+    date_from: formattedStart,
+    date_to: formattedEnd
+  });
+
+  const apiUrl = `https://science.nasa.gov/wp-json/wp/v2/apod-basic?${query}`;
 
 	getImagesButton.disabled = true;
 	statusMessage.textContent = 'Loading space images...';
@@ -47,6 +51,8 @@ async function getSpaceImages() {
 		}
 
 		const photos = await response.json();
+
+
 		photos.forEach(showPhoto);
 		statusMessage.textContent = `Showing ${photos.length} APOD entries.`;
 	} catch (error) {
