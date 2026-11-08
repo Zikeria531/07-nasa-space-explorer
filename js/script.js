@@ -4,11 +4,13 @@ const endInput = document.getElementById('endDate');
 const getImagesButton = document.getElementById('getImagesButton');
 const gallery = document.getElementById('gallery');
 const statusMessage = document.getElementById('status');
-
-// NASA provides DEMO_KEY for trying the API without signing up.
-// However, DEMO_KEY sometimes returns NASA's sample logo instead of real APOD photos.
-// For live data, replace it with your own API key from https://api.nasa.gov/ .
-const apiKey = 'DEMO_KEY';
+const photoModal = document.getElementById('photoModal');
+const closeModalButton = document.getElementById('closeModalButton');
+const modalTitle = document.getElementById('modalTitle');
+const modalDate = document.getElementById('modalDate');
+const modalImage = document.getElementById('modalImage');
+const modalVideoLink = document.getElementById('modalVideoLink');
+const modalExplanation = document.getElementById('modalExplanation');
 
 // Call the setupDateInputs function from dateRange.js
 // This sets up the date pickers to:
@@ -18,6 +20,12 @@ setupDateInputs(startInput, endInput);
 
 // Fetch APOD entries when the user asks for the selected date range.
 getImagesButton.addEventListener('click', getSpaceImages);
+closeModalButton.addEventListener('click', () => photoModal.close());
+photoModal.addEventListener('click', (event) => {
+	if (event.target === photoModal) {
+		photoModal.close();
+	}
+});
 
 async function getSpaceImages() {
 	const startDate = startInput.value;
@@ -28,7 +36,7 @@ async function getSpaceImages() {
 		return;
 	}
 
-	// URLSearchParams safely formats the dates and API key for the request URL.
+	// The APOD endpoint expects dates in YYMMDD format.
 	const formattedStart = startDate.slice(2).replaceAll('-', '');
   const formattedEnd = endDate.slice(2).replaceAll('-', '');
 
@@ -51,7 +59,9 @@ async function getSpaceImages() {
 		}
 
 		const photos = await response.json();
-
+		photos.sort((firstPhoto, secondPhoto) =>
+			firstPhoto.date.localeCompare(secondPhoto.date)
+		);
 
 		photos.forEach(showPhoto);
 		statusMessage.textContent = `Showing ${photos.length} APOD entries.`;
@@ -65,6 +75,16 @@ async function getSpaceImages() {
 function showPhoto(photo) {
 	const card = document.createElement('article');
 	card.className = 'gallery-item';
+	card.tabIndex = 0;
+	card.setAttribute('role', 'button');
+	card.setAttribute('aria-label', `View ${photo.title}`);
+	card.addEventListener('click', () => openPhotoModal(photo));
+	card.addEventListener('keydown', (event) => {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			openPhotoModal(photo);
+		}
+	});
 
 	const title = document.createElement('h2');
 	title.textContent = photo.title;
@@ -77,21 +97,31 @@ function showPhoto(photo) {
 
 	if (photo.media_type === 'image') {
 		const image = document.createElement('img');
-		image.src = photo.url;
-		image.alt = photo.title;
+		image.src = photo.hdurl;
+		image.alt = photo.alt || photo.title;
 		card.appendChild(image);
-	} else {
-		const mediaLink = document.createElement('a');
-		mediaLink.href = photo.url;
-		mediaLink.target = '_blank';
-		mediaLink.rel = 'noopener noreferrer';
-		mediaLink.textContent = 'View this APOD video';
-		card.appendChild(mediaLink);
 	}
 
-	const description = document.createElement('p');
-	description.textContent = photo.explanation;
-	card.appendChild(description);
-
 	gallery.appendChild(card);
+}
+
+function openPhotoModal(photo) {
+	modalTitle.textContent = photo.title;
+	modalDate.textContent = photo.date;
+	modalExplanation.textContent = new DOMParser()
+		.parseFromString(photo.explanation, 'text/html')
+		.body.textContent;
+
+	if (photo.media_type === 'image') {
+		modalImage.src = photo.hdurl;
+		modalImage.alt = photo.alt || photo.title;
+		modalImage.hidden = false;
+		modalVideoLink.hidden = true;
+	} else {
+		modalImage.hidden = true;
+		modalVideoLink.href = photo.url;
+		modalVideoLink.hidden = false;
+	}
+
+	photoModal.showModal();
 }
